@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Chat – CoreTalk</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00d4ff" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--chat-bg, #0a0a0a);
+      color: #eee;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex; align-items: center; gap: 0.7rem;
+      padding: 0.75rem 1rem;
+      background: #111;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .back { background: none; border: none; color: #00d4ff; font-size: 1.3rem; cursor: pointer; }
+    .chat-title { font-weight: 600; font-size: 1rem; flex: 1; }
+    .header-btn {
+      background: none; border: none; color: #00d4ff;
+      font-size: 1.1rem; cursor: pointer; padding: 0.3rem;
+    }
+
+    #messages {
+      flex: 1; overflow-y: auto; padding: 1rem;
+      display: flex; flex-direction: column; gap: 0.45rem;
+    }
+    .msg {
+      max-width: 78%; padding: 0.55rem 0.9rem;
+      border-radius: 14px; font-size: 0.95rem; line-height: 1.4;
+      animation: fade 0.2s ease; word-break: break-word; position: relative;
+    }
+    .msg.mine {
+      align-self: flex-end;
+      background: linear-gradient(135deg, #00b4d8, #0077b6);
+      color: #fff; border-bottom-right-radius: 4px;
+    }
+    .msg.theirs {
+      align-self: flex-start;
+      background: #1a1a1a; border: 1px solid #222;
+      border-bottom-left-radius: 4px;
+    }
+    .msg .meta {
+      display: flex; justify-content: flex-end; align-items: center;
+      gap: 0.4rem; margin-top: 0.25rem; font-size: 0.65rem; opacity: 0.75;
+    }
+    .msg .actions {
+      display: none; gap: 0.3rem; margin-top: 0.3rem;
+    }
+    .msg:hover .actions, .msg.show-actions .actions { display: flex; }
+    .msg .actions button {
+      background: rgba(0,0,0,0.25); border: none; color: #fff;
+      font-size: 0.7rem; padding: 0.15rem 0.4rem; border-radius: 6px; cursor: pointer;
+    }
+    .reactions {
+      display: flex; gap: 0.2rem; margin-top: 0.25rem; flex-wrap: wrap;
+    }
+    .reaction {
+      background: rgba(0,0,0,0.3); border-radius: 10px;
+      padding: 0.1rem 0.35rem; font-size: 0.75rem;
+    }
+    @keyframes fade {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .toolbar {
+      display: flex; gap: 0.4rem; padding: 0.4rem 0.8rem;
+      background: #0d0d0d; border-top: 1px solid #1a1a1a;
+      overflow-x: auto;
+    }
+    .toolbar button {
+      background: #1a1a1a; border: 1px solid #2a2a2a;
+      border-radius: 8px; padding: 0.3rem 0.5rem;
+      font-size: 1.15rem; cursor: pointer; flex-shrink: 0;
+    }
+
+    .input-bar {
+      display: flex; gap: 0.5rem; padding: 0.65rem 0.9rem;
+      background: #111; border-top: 1px solid #1a1a1a;
+      padding-bottom: calc(0.65rem + env(safe-area-inset-bottom));
+    }
+    .input-bar input {
+      flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a;
+      border-radius: 50px; padding: 0.7rem 1.1rem; color: #fff;
+      outline: none; font-size: 0.95rem;
+    }
+    .input-bar input:focus { border-color: #00d4ff; }
+    .input-bar button {
+      background: #00d4ff; color: #000; border: none;
+      width: 44px; height: 44px; border-radius: 50%;
+      font-weight: 700; cursor: pointer; font-size: 1.1rem;
+    }
+
+    /* Timer modal */
+    .modal-bg {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7); z-index: 50;
+      align-items: center; justify-content: center;
+    }
+    .modal-bg.show { display: flex; }
+    .modal {
+      background: #151515; border-radius: 16px; padding: 1.4rem;
+      width: 90%; max-width: 320px; text-align: center;
+    }
+    .modal h3 { margin-bottom: 1rem; }
+    .modal button {
+      display: block; width: 100%; margin: 0.4rem 0;
+      padding: 0.7rem; border-radius: 10px; border: 1px solid #333;
+      background: #1a1a1a; color: #eee; cursor: pointer; font-size: 0.95rem;
+    }
+    .modal button:hover { border-color: #00d4ff; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" onclick="location.href='chats.html'">←</button>
+    <div class="chat-title" id="chatTitle">Chat</div>
+    <button class="header-btn" onclick="openTimer()" title="Disappearing messages">⏱️</button>
+    <button class="header-btn" onclick="shareApp()" title="Share">↗</button>
+  </header>
+
+  <div id="messages"></div>
+
+  <div class="toolbar" id="emojiBar">
+    <button onclick="insert('😀')">😀</button>
+    <button onclick="insert('😂')">😂</button>
+    <button onclick="insert('❤️')">❤️</button>
+    <button onclick="insert('🔥')">🔥</button>
+    <button onclick="insert('👍')">👍</button>
+    <button onclick="insert('🎉')">🎉</button>
+    <button onclick="insert('🙏')">🙏</button>
+    <button onclick="insert('💯')">💯</button>
+    <button onclick="insert('🚀')">🚀</button>
+    <button onclick="insert('✨')">✨</button>
+    <button onclick="insert('😎')">😎</button>
+    <button onclick="insert('🥰')">🥰</button>
+    <button onclick="insertSticker('👋')">👋</button>
+    <button onclick="insertSticker('💪')">💪</button>
+    <button onclick="insertSticker('🙌')">🙌</button>
+    <button onclick="insertSticker('🤝')">🤝</button>
+  </div>
+
+  <div class="input-bar">
+    <input type="text" id="msgInput" placeholder="Message..." onkeypress="if(event.key==='Enter')send()" />
+    <button onclick="send()">➤</button>
+  </div>
+
+  <!-- Timer Modal -->
+  <div class="modal-bg" id="timerModal">
+    <div class="modal">
+      <h3>Disappearing Messages</h3>
+      <button onclick="setTimer(0)">Off</button>
+      <button onclick="setTimer(24)">24 Hours</button>
+      <button onclick="setTimer(168)">7 Days</button>
+      <button onclick="closeTimer()" style="margin-top:0.8rem; color:#888;">Cancel</button>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const chatId = params.get("id");
+    let me = null;
+    let chatTimer = 0; // hours, 0 = off
+
+    // Apply wallpaper
+    const wall = localStorage.getItem("ct_wall") || "default";
+    const walls = {
+      default: "#0a0a0a",
+      darkblue: "linear-gradient(145deg,#0a1628,#0d2137)",
+      purple: "linear-gradient(145deg,#1a0a2e,#2d1b4e)",
+      green: "linear-gradient(145deg,#0a1f14,#0d2e1c)",
+      dim: "#121212",
+      soft: "linear-gradient(145deg,#1c1c1c,#2a2a2a)",
+      sunset: "linear-gradient(145deg,#2a1a0a,#4a2c0f)",
+      ocean: "linear-gradient(145deg,#0a1a2a,#0d3a4a)",
+      rose: "linear-gradient(145deg,#2a0a1a,#4a0f2c)",
+      midnight: "linear-gradient(145deg,#050510,#0a0a20)",
+      forest: "linear-gradient(145deg,#0a150a,#142814)",
+      carbon: "#111"
+    };
+    document.body.style.background = walls[wall] || walls.default;
+
+    auth.onAuthStateChanged(user => {
+      if (!user) return location.href = "index.html";
+      me = user;
+      if (!chatId) return location.href = "chats.html";
+      loadMessages();
+      loadChatInfo();
+    });
+
+    function loadChatInfo() {
+      db.collection("coretalk_chats").doc(chatId).get().then(doc => {
+        if (!doc.exists) return;
+        const d = doc.data();
+        chatTimer = d.timerHours || 0;
+        const other = (d.memberInfo || []).find(m => m.uid !== me.uid);
+        document.getElementById("chatTitle").textContent = other?.name || "Chat";
+      });
+    }
+
+    function loadMessages() {
+      const box = document.getElementById("messages");
+      db.collection("coretalk_chats").doc(chatId).collection("messages")
+        .orderBy("createdAt", "asc").limitToLast(100)
+        .onSnapshot(snap => {
+          box.innerHTML = "";
+          const now = Date.now();
+          snap.forEach(doc => {
+            const d = doc.data();
+            // Auto-delete check
+            if (d.expiresAt && d.expiresAt.toDate && d.expiresAt.toDate().getTime() < now) {
+              doc.ref.delete();
+              return;
+            }
+            const mine = d.uid === me.uid;
+            const el = document.createElement("div");
+            el.className = "msg " + (mine ? "mine" : "theirs");
+            el.onclick = () => el.classList.toggle("show-actions");
+
+            let html = `<div>${escapeHtml(d.text)}</div>`;
+            if (d.reactions && d.reactions.length) {
+              html += `<div class="reactions">${d.reactions.map(r => `<span class="reaction">${r}</span>`).join("")}</div>`;
+            }
+            html += `<div class="meta"><span>${formatTime(d.createdAt)}</span></div>`;
+            html += `<div class="actions">
+              <button onclick="event.stopPropagation();react('${doc.id}','❤️')">❤️</button>
+              <button onclick="event.stopPropagation();react('${doc.id}','😂')">😂</button>
+              <button onclick="event.stopPropagation();react('${doc.id}','👍')">👍</button>
+              <button onclick="event.stopPropagation();react('${doc.id}','🔥')">🔥</button>`;
+            if (mine) {
+              html += `<button onclick="event.stopPropagation();editMsg('${doc.id}','${escapeHtml(d.text).replace(/'/g,"\\'")}')">Edit</button>
+                       <button onclick="event.stopPropagation();deleteMsg('${doc.id}')">Delete</button>`;
+            }
+            html += `</div>`;
+            el.innerHTML = html;
+            box.appendChild(el);
+          });
+          box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    function send() {
+      const input = document.getElementById("msgInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      const data = {
+        text,
+        uid: me.uid,
+        name: me.displayName || "User",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        reactions: []
+      };
+      if (chatTimer > 0) {
+        const exp = new Date();
+        exp.setHours(exp.getHours() + chatTimer);
+        data.expiresAt = exp;
+      }
+
+      const ref = db.collection("coretalk_chats").doc(chatId);
+      ref.collection("messages").add(data).then(() => {
+        ref.update({
+          lastMessage: text,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = "";
+      });
+    }
+
+    function deleteMsg(id) {
+      if (!confirm("Delete this message?")) return;
+      db.collection("coretalk_chats").doc(chatId).collection("messages").doc(id).delete();
+    }
+
+    function editMsg(id, oldText) {
+      const newText = prompt("Edit message:", oldText);
+      if (newText === null || !newText.trim()) return;
+      db.collection("coretalk_chats").doc(chatId).collection("messages").doc(id)
+        .update({ text: newText.trim() });
+    }
+
+    function react(id, emoji) {
+      const ref = db.collection("coretalk_chats").doc(chatId).collection("messages").doc(id);
+      ref.get().then(doc => {
+        const reactions = doc.data().reactions || [];
+        if (!reactions.includes(emoji)) reactions.push(emoji);
+        ref.update({ reactions });
+      });
+    }
+
+    function insert(emoji) {
+      const input = document.getElementById("msgInput");
+      input.value += emoji;
+      input.focus();
+    }
+    function insertSticker(s) {
+      document.getElementById("msgInput").value = s;
+      send();
+    }
+
+    function openTimer() { document.getElementById("timerModal").classList.add("show"); }
+    function closeTimer() { document.getElementById("timerModal").classList.remove("show"); }
+    function setTimer(hours) {
+      chatTimer = hours;
+      db.collection("coretalk_chats").doc(chatId).update({ timerHours: hours });
+      closeTimer();
+      alert(hours === 0 ? "Disappearing messages off" : `Messages will disappear after ${hours} hours`);
+    }
+
+    function shareApp() {
+      const url = "https://alvinlurison.github.io/CoreTalk/";
+      if (navigator.share) {
+        navigator.share({ title: "CoreTalk", text: "Chat with me on CoreTalk", url });
+      } else {
+        navigator.clipboard.writeText(url).then(() => alert("Link copied!"));
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+    function formatTime(ts) {
+      if (!ts) return "";
+      const d = ts.toDate ? ts.toDate() : new Date();
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  </script>
+</body>
+</html>
