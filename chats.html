@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Chats – CoreTalk</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00d4ff" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0a0a;
+      color: #eee;
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.2rem;
+      background: #111;
+      border-bottom: 1px solid #1a1a1a;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .logo { font-weight: 700; font-size: 1.2rem; }
+    .logo span { color: #00d4ff; }
+    .header-actions { display: flex; gap: 0.8rem; align-items: center; }
+    .header-actions img {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 2px solid #00d4ff44;
+    }
+    .signout {
+      background: none; border: 1px solid #333; color: #aaa;
+      padding: 0.3rem 0.8rem; border-radius: 20px; font-size: 0.8rem; cursor: pointer;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 0.9rem;
+      padding: 1rem 1.2rem;
+      overflow-x: auto;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .status-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      min-width: 62px;
+      cursor: pointer;
+    }
+    .status-ring {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      border: 2.5px solid #00d4ff;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+      background: #1a1a1a;
+    }
+    .status-ring img { width: 100%; height: 100%; object-fit: cover; }
+    .status-ring.add { border-style: dashed; color: #00d4ff; font-size: 1.5rem; }
+    .status-name { font-size: 0.7rem; color: #aaa; max-width: 62px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .chat-list { padding: 0.5rem 0; }
+    .chat-item {
+      display: flex;
+      gap: 0.9rem;
+      padding: 0.85rem 1.2rem;
+      align-items: center;
+      cursor: pointer;
+      border-bottom: 1px solid #141414;
+      transition: background 0.15s;
+    }
+    .chat-item:active { background: #151515; }
+    .avatar {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; color: #00d4ff; font-size: 1.1rem;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-wrap { position: relative; flex-shrink: 0; }
+    .online-dot {
+      position: absolute; bottom: 2px; right: 2px;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #22c55e; border: 2px solid #0a0a0a;
+    }
+    .online-dot.off { background: #555; }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-top { display: flex; justify-content: space-between; margin-bottom: 0.2rem; }
+    .chat-name { font-weight: 600; font-size: 0.95rem; }
+    .chat-time { font-size: 0.75rem; color: #666; }
+    .chat-preview { font-size: 0.85rem; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #111;
+      border-top: 1px solid #1a1a1a;
+      display: flex;
+      justify-content: space-around;
+      padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; color: #666; font-size: 0.7rem; text-decoration: none;
+    }
+    .nav-item.active { color: #00d4ff; }
+    .nav-item span { font-size: 1.3rem; }
+
+    .empty {
+      text-align: center; padding: 3rem 1.5rem; color: #666;
+    }
+  
+    .fab-add {
+      position: fixed;
+      right: 1.2rem;
+      bottom: 5rem;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: #00d4ff;
+      color: #000;
+      border: none;
+      font-size: 1.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 20px #00d4ff55;
+      z-index: 30;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+  
+    .toast {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      background: #00d4ff; color: #000; padding: 0.7rem 1.3rem;
+      border-radius: 50px; font-weight: 600; font-size: 0.9rem;
+      z-index: 100; display: none; animation: slideDown 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0,212,255,0.3);
+    }
+    .toast.show { display: block; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+      to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+
+  
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+      z-index: 100; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-bg.show { display: flex; }
+    .modal {
+      background: #151515; border: 1px solid #2a2a2a; border-radius: 16px;
+      padding: 1.4rem; width: 100%; max-width: 340px;
+    }
+    .modal h3 { margin-bottom: 0.8rem; font-size: 1.05rem; }
+    .modal input {
+      width: 100%; padding: 0.75rem 1rem; background: #0a0a0a;
+      border: 1px solid #2a2a2a; border-radius: 10px; color: #fff;
+      outline: none; font-size: 0.95rem; margin-bottom: 0.9rem;
+    }
+    .modal input:focus { border-color: #00d4ff; }
+    .modal-actions { display: flex; gap: 0.5rem; }
+    .modal-actions button {
+      flex: 1; padding: 0.7rem; border-radius: 10px; border: none;
+      font-weight: 600; cursor: pointer; font-size: 0.9rem;
+    }
+    .btn-cancel { background: #222; color: #aaa; }
+    .btn-ok { background: #00d4ff; color: #000; }
+    .chat-item .del-chat {
+      background: none; border: none; color: #666; font-size: 1rem;
+      cursor: pointer; padding: 0.3rem; flex-shrink: 0;
+    }
+    .chat-item .del-chat:hover { color: #ff4d4d; }
+
+  
+    @media (orientation: landscape) and (max-height: 500px) {
+      header { padding: 0.5rem 1rem; }
+      .status-row { padding: 0.6rem 1rem; }
+      .status-ring { width: 44px; height: 44px; }
+      .chat-item { padding: 0.6rem 1rem; }
+      .bottom-nav { padding: 0.4rem 0; }
+    }
+    @media (min-width: 800px) {
+      .chat-list { max-width: 700px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast" id="toast"></div>
+  <header>
+    <div>
+      <div class="logo">Core<span>Talk</span></div>
+      <div id="myCoreId" style="font-size:0.75rem; color:#00d4ff; margin-top:2px;"></div>
+    </div>
+    <div class="header-actions">
+      <button onclick="startNewChat()" style="background:#00d4ff;color:#000;border:none;width:34px;height:34px;border-radius:50%;font-size:1.3rem;font-weight:700;cursor:pointer;line-height:1;">+</button>
+      <button onclick="shareApp()" style="background:none;border:1px solid #333;color:#00d4ff;padding:0.3rem 0.6rem;border-radius:20px;font-size:0.8rem;cursor:pointer;">Share</button>
+      <img id="myPhoto" src="" alt="" />
+      <button class="signout" onclick="signOut()">Out</button>
+    </div>
+  </header>
+
+  <!-- Status / Stories row -->
+  <div class="status-row" id="statusRow">
+    <div class="status-item" onclick="location.href='status.html?action=add'">
+      <div class="status-ring add">+</div>
+      <div class="status-name">My Status</div>
+    </div>
+  </div>
+
+  <div class="chat-list" id="chatList">
+    <div class="empty">Loading chats...</div>
+  </div>
+
+  <button class="fab-add" onclick="startNewChat()" title="Add person">+</button>
+
+  
+  <div class="modal-bg" id="addModal">
+    <div class="modal">
+      <h3 id="modalTitle">New Chat</h3>
+      <div style="display:flex; gap:0.4rem; margin-bottom:0.9rem;">
+        <button id="tabSingle" onclick="setChatType('single')" style="flex:1; padding:0.5rem; border-radius:8px; border:1px solid #00d4ff; background:#00d4ff; color:#000; font-weight:600; cursor:pointer; font-size:0.85rem;">1-on-1</button>
+        <button id="tabGroup" onclick="setChatType('group')" style="flex:1; padding:0.5rem; border-radius:8px; border:1px solid #333; background:#1a1a1a; color:#aaa; font-weight:600; cursor:pointer; font-size:0.85rem;">Group</button>
+      </div>
+      <input type="text" id="groupNameInput" placeholder="Group name" style="display:none; width:100%; padding:0.75rem 1rem; background:#0a0a0a; border:1px solid #2a2a2a; border-radius:10px; color:#fff; outline:none; font-size:0.95rem; margin-bottom:0.7rem;" />
+      <input type="text" id="addInput" placeholder="CoreTalk ID (for group: id1, id2, id3)" />
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAdd()">Cancel</button>
+        <button class="btn-ok" onclick="confirmAdd()">Start</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div class="modal-bg" id="deleteModal">
+    <div class="modal">
+      <h3>Delete chat?</h3>
+      <p style="color:#888; font-size:0.9rem; margin-bottom:1rem;">This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="cancelDelete()">Cancel</button>
+        <button class="btn-ok" onclick="confirmDelete()" style="background:#ff4d4d; color:#fff;">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="chats.html" class="nav-item active"><span>💬</span>Chats</a>
+    <a href="status.html" class="nav-item"><span>○</span>Status</a>
+    <a href="settings.html" class="nav-item"><span>⚙️</span>Settings</a>
+  </nav>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    let me = null;
+
+    auth.onAuthStateChanged(user => {
+      if (!user) return location.href = "index.html";
+      me = user;
+      if (user.photoURL) document.getElementById("myPhoto").src = user.photoURL;
+      loadChats();
+      loadStatuses();
+      requestNotif();
+      startPresence();
+      const cid = localStorage.getItem("ct_username");
+      if (cid) {
+        const el = document.getElementById("myCoreId");
+        if (el) el.textContent = "ID: " + cid;
+      } else {
+        db.collection("coretalk_users").doc(me.uid).get().then(doc => {
+          if (doc.exists && doc.data().username) {
+            localStorage.setItem("ct_username", doc.data().username);
+            const el = document.getElementById("myCoreId");
+            if (el) el.textContent = "ID: " + doc.data().username;
+          }
+        }).catch(() => {});
+      }
+    });
+
+    function shareApp() {
+      const url = "https://alvinlurison.github.io/CoreTalk/";
+      if (navigator.share) {
+        navigator.share({ title: "CoreTalk", text: "Join me on CoreTalk – fast chat + status", url });
+      } else {
+        navigator.clipboard.writeText(url).then(() => alert("Link copied! Share it with friends."));
+      }
+    }
+
+
+    function showToast(msg) {
+      const t = document.getElementById("toast");
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(() => t.classList.remove("show"), 3000);
+      // Browser notification if permitted
+      if (Notification.permission === "granted") {
+        new Notification("CoreTalk", { body: msg, icon: "logo.png" });
+      }
+    }
+
+    function requestNotif() {
+      if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+
+
+    function setPresence(online) {
+      if (!me) return;
+      db.collection("coretalk_presence").doc(me.uid).set({
+        online: online,
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+        name: me.displayName || "User",
+        photo: me.photoURL || ""
+      }, { merge: true }).catch(() => {});
+    }
+
+    function startPresence() {
+      setPresence(true);
+      // heartbeat every 40s
+      setInterval(() => { if (document.visibilityState === "visible") setPresence(true); }, 40000);
+      document.addEventListener("visibilitychange", () => {
+        setPresence(document.visibilityState === "visible");
+      });
+      window.addEventListener("beforeunload", () => setPresence(false));
+    }
+
+    const presenceCache = {};
+    function watchPresence(uid, dotEl) {
+      if (!uid || !dotEl) return;
+      db.collection("coretalk_presence").doc(uid).onSnapshot(doc => {
+        const d = doc.data();
+        const on = d && d.online === true;
+        // treat as offline if lastSeen older than 2 min
+        let online = on;
+        if (d && d.lastSeen && d.lastSeen.toDate) {
+          const age = Date.now() - d.lastSeen.toDate().getTime();
+          if (age > 120000) online = false;
+        }
+        presenceCache[uid] = online;
+        dotEl.className = "online-dot" + (online ? "" : " off");
+      }, () => {});
+    }
+
+    function signOut() {
+      setPresence(false); auth.signOut().then(() => location.href = "index.html");
+    }
+
+    function loadChats() {
+      // For v1 we show a simple "Start new chat" and recent conversations
+      const list = document.getElementById("chatList");
+      db.collection("coretalk_chats")
+        .where("members", "array-contains", me.uid)
+        .limit(40)
+        .onSnapshot(snap => {
+          if (snap.empty) {
+            list.innerHTML = `
+              <div class="empty">
+                <p>No chats yet</p>
+                <p style="margin-top:0.8rem; font-size:0.9rem;">Start by sharing CoreTalk with a friend</p>
+                <button onclick="startNewChat()" style="margin-top:1.2rem; background:#00d4ff; color:#000; border:none; padding:0.7rem 1.4rem; border-radius:50px; font-weight:600; cursor:pointer;">
+                  New Chat
+                </button>
+              </div>`;
+            return;
+          }
+          let html = "";
+          snap.forEach(doc => {
+            const d = doc.data();
+            const isGroup = d.type === "group";
+            const other = d.memberInfo?.find(m => m.uid !== me.uid) || {};
+            const displayName = isGroup ? (d.groupName || "Group") : (other.name || "User");
+            const initial = displayName.charAt(0).toUpperCase();
+            html += `
+              <div class="chat-item" onclick="location.href='chat.html?id=${doc.id}'">
+                <div class="avatar-wrap"><div class="avatar" id="av-${doc.id}">${(!isGroup && other.photo) ? `<img src="${other.photo}">` : (isGroup ? "👥" : initial)}</div>${isGroup ? "" : `<span class="online-dot off" id="dot-${doc.id}"></span>`}</div>
+                <div class="chat-info">
+                  <div class="chat-top">
+                    <span class="chat-name">${displayName}</span>
+                    <span class="chat-time">${formatTime(d.updatedAt)}</span>
+                  </div>
+                  <div class="chat-preview">${d.lastMessage || "Start chatting"}</div>
+                </div>
+                <button class="del-chat" onclick="deleteChat('${doc.id}', event)" title="Delete">🗑️</button>
+              </div>`;
+          });
+          list.innerHTML = html;
+          // online indicators for 1-on-1 chats
+          snap.forEach(doc => {
+            const d = doc.data();
+            if (d.type === "group") return;
+            const other = (d.memberInfo || []).find(m => m.uid !== me.uid);
+            if (other && other.uid) {
+              const dot = document.getElementById("dot-" + doc.id);
+              if (dot) watchPresence(other.uid, dot);
+            }
+          });
+        }, err => {
+          console.error(err);
+          list.innerHTML = `<div class="empty">Could not load chats.<br>Check Firestore rules.</div>`;
+        });
+    }
+
+    function loadStatuses() {
+      // Lightweight: show recent statuses
+      const row = document.getElementById("statusRow");
+      db.collection("coretalk_status")
+        .where("expiresAt", ">", new Date())
+        .limit(20)
+        .onSnapshot(snap => {
+          // Keep the "My Status" button, append others
+          let html = `
+            <div class="status-item" onclick="location.href='status.html?action=add'">
+              <div class="status-ring add">+</div>
+              <div class="status-name">My Status</div>
+            </div>`;
+          snap.forEach(doc => {
+            const d = doc.data();
+            if (d.uid === me.uid) return;
+            html += `
+              <div class="status-item" onclick="location.href='status.html?uid=${d.uid}'">
+                <div class="status-ring">
+                  ${d.photo ? `<img src="${d.photo}">` : (d.name || "?").charAt(0)}
+                </div>
+                <div class="status-name">${(d.name || "User").split(" ")[0]}</div>
+              </div>`;
+          });
+          row.innerHTML = html;
+        });
+    }
+
+
+
+    let chatType = "single";
+
+    function setChatType(type) {
+      chatType = type;
+      const tabS = document.getElementById("tabSingle");
+      const tabG = document.getElementById("tabGroup");
+      const gName = document.getElementById("groupNameInput");
+      const input = document.getElementById("addInput");
+      if (type === "group") {
+        tabS.style.background = "#1a1a1a"; tabS.style.color = "#aaa"; tabS.style.borderColor = "#333";
+        tabG.style.background = "#00d4ff"; tabG.style.color = "#000"; tabG.style.borderColor = "#00d4ff";
+        gName.style.display = "block";
+        input.placeholder = "IDs separated by comma (e.g. alvin, martis)";
+        document.getElementById("modalTitle").textContent = "New Group";
+      } else {
+        tabG.style.background = "#1a1a1a"; tabG.style.color = "#aaa"; tabG.style.borderColor = "#333";
+        tabS.style.background = "#00d4ff"; tabS.style.color = "#000"; tabS.style.borderColor = "#00d4ff";
+        gName.style.display = "none";
+        input.placeholder = "CoreTalk ID or email";
+        document.getElementById("modalTitle").textContent = "New Chat";
+      }
+    }
+
+    function startNewChat() {
+      chatType = "single";
+      setChatType("single");
+      document.getElementById("addInput").value = "";
+      document.getElementById("groupNameInput").value = "";
+      document.getElementById("addModal").classList.add("show");
+      setTimeout(() => document.getElementById("addInput").focus(), 100);
+    }
+
+    function closeAdd() {
+      document.getElementById("addModal").classList.remove("show");
+    }
+
+    function confirmAdd() {
+      if (chatType === "group") {
+        createGroup();
+      } else {
+        createSingle();
+      }
+    }
+
+    function createSingle() {
+      const value = document.getElementById("addInput").value.trim().toLowerCase();
+      if (!value) return;
+      closeAdd();
+
+      db.collection("coretalk_users").where("username", "==", value).limit(1).get()
+        .then(snap => {
+          let otherUid = value, otherName = value, otherPhoto = "";
+          if (!snap.empty) {
+            const u = snap.docs[0].data();
+            otherUid = u.uid || snap.docs[0].id;
+            otherName = u.name || u.username;
+            otherPhoto = u.photo || "";
+          }
+          if (otherUid === me.uid) { showToast("That's you!"); return; }
+
+          const chatId = [me.uid, otherUid].sort().join("_").replace(/[^a-z0-9_]/gi, "");
+          const ref = db.collection("coretalk_chats").doc(chatId);
+          return ref.get().then(doc => {
+            if (doc.exists) { location.href = "chat.html?id=" + chatId; return; }
+            return ref.set({
+              type: "single",
+              members: [me.uid, otherUid],
+              memberInfo: [
+                { uid: me.uid, name: me.displayName || "User", photo: me.photoURL || "" },
+                { uid: otherUid, name: otherName, photo: otherPhoto }
+              ],
+              lastMessage: "",
+              updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => location.href = "chat.html?id=" + chatId);
+          });
+        })
+        .catch(err => { console.error(err); showToast("Could not start chat"); });
+    }
+
+    function createGroup() {
+      const groupName = document.getElementById("groupNameInput").value.trim();
+      const idsRaw = document.getElementById("addInput").value.trim().toLowerCase();
+      if (!groupName) { showToast("Enter a group name"); return; }
+      if (!idsRaw) { showToast("Add at least one person"); return; }
+      closeAdd();
+
+      const ids = idsRaw.split(",").map(s => s.trim()).filter(Boolean);
+      const memberUids = [me.uid];
+      const memberInfo = [
+        { uid: me.uid, name: me.displayName || "User", photo: me.photoURL || "" }
+      ];
+
+      const lookups = ids.map(id =>
+        db.collection("coretalk_users").where("username", "==", id).limit(1).get()
+          .then(snap => {
+            if (!snap.empty) {
+              const u = snap.docs[0].data();
+              const uid = u.uid || snap.docs[0].id;
+              if (uid !== me.uid && !memberUids.includes(uid)) {
+                memberUids.push(uid);
+                memberInfo.push({ uid, name: u.name || u.username, photo: u.photo || "" });
+              }
+            } else if (id !== me.uid && !memberUids.includes(id)) {
+              memberUids.push(id);
+              memberInfo.push({ uid: id, name: id, photo: "" });
+            }
+          })
+      );
+
+      Promise.all(lookups).then(() => {
+        const chatId = "group_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+        return db.collection("coretalk_chats").doc(chatId).set({
+          type: "group",
+          groupName: groupName,
+          members: memberUids,
+          memberInfo: memberInfo,
+          lastMessage: "",
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => location.href = "chat.html?id=" + chatId);
+      }).catch(err => {
+        console.error(err);
+        showToast("Could not create group");
+      });
+    }
+
+    let pendingDeleteId = null;
+
+    function deleteChat(chatId, event) {
+      if (event) event.stopPropagation();
+      pendingDeleteId = chatId;
+      document.getElementById("deleteModal").classList.add("show");
+    }
+
+    function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const id = pendingDeleteId;
+      pendingDeleteId = null;
+      document.getElementById("deleteModal").classList.remove("show");
+      db.collection("coretalk_chats").doc(id).delete()
+        .then(() => showToast("Chat deleted"))
+        .catch(() => showToast("Could not delete"));
+    }
+
+    function cancelDelete() {
+      pendingDeleteId = null;
+      document.getElementById("deleteModal").classList.remove("show");
+    }
+
+
+
+
+    function formatTime(ts) {
+      if (!ts) return "";
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>

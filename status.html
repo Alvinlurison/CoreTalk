@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Status – CoreTalk</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00d4ff" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0a0a; color: #eee;
+      min-height: 100vh; padding-bottom: 70px;
+    }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 1.2rem; background: #111; border-bottom: 1px solid #1a1a1a;
+    }
+    .logo { font-weight: 700; font-size: 1.2rem; }
+    .back { background: none; border: none; color: #00d4ff; font-size: 1rem; cursor: pointer; }
+
+    .add-box {
+      margin: 1.2rem; background: #111; border: 1px solid #1a1a1a;
+      border-radius: 14px; padding: 1.2rem;
+    }
+    .add-box textarea {
+      width: 100%; min-height: 70px; background: #0a0a0a;
+      border: 1px solid #2a2a2a; border-radius: 10px; color: #fff;
+      padding: 0.8rem; resize: none; outline: none; font-size: 0.95rem;
+    }
+    .media-row {
+      display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; align-items: center;
+    }
+    .media-row label, .media-row button {
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc;
+      padding: 0.5rem 0.9rem; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+    }
+    .media-row input { display: none; }
+    #mediaPreview {
+      margin-top: 0.7rem; max-height: 180px; border-radius: 10px; overflow: hidden; display: none;
+    }
+    #mediaPreview img, #mediaPreview video {
+      width: 100%; max-height: 180px; object-fit: contain; background: #000;
+    }
+    .post-btn {
+      margin-top: 0.8rem; background: #00d4ff; color: #000; border: none;
+      padding: 0.65rem 1.4rem; border-radius: 50px; font-weight: 600; cursor: pointer;
+    }
+
+    .status-list { padding: 0.5rem 1.2rem; }
+    .status-card {
+      background: #111; border: 1px solid #1a1a1a; border-radius: 14px;
+      padding: 1rem; margin-bottom: 0.8rem;
+    }
+    .status-header {
+      display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.7rem;
+    }
+    .status-avatar {
+      width: 40px; height: 40px; border-radius: 50%; background: #1a1a1a;
+      display: flex; align-items: center; justify-content: center;
+      color: #00d4ff; font-weight: 700; overflow: hidden;
+    }
+    .status-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .status-meta { font-size: 0.8rem; color: #888; }
+    .status-text { font-size: 1rem; line-height: 1.45; margin-bottom: 0.5rem; }
+    .status-media img, .status-media video {
+      width: 100%; max-height: 280px; object-fit: contain;
+      border-radius: 10px; background: #000; margin-top: 0.4rem;
+    }
+    .empty { text-align: center; padding: 2.5rem; color: #666; }
+    .status-actions {
+      display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap;
+    }
+    .status-actions button {
+      background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc;
+      padding: 0.35rem 0.75rem; border-radius: 16px; font-size: 0.8rem; cursor: pointer;
+    }
+    .status-actions button:active { border-color: #00d4ff; color: #00d4ff; }
+    .status-actions .del { border-color: #5c1a1a; color: #ff6b6b; }
+
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #111; border-top: 1px solid #1a1a1a;
+      display: flex; justify-content: space-around;
+      padding: 0.6rem 0 calc(0.6rem + env(safe-area-inset-bottom));
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 0.2rem; color: #666; font-size: 0.7rem; text-decoration: none;
+    }
+    .nav-item.active { color: #00d4ff; }
+    .nav-item span { font-size: 1.3rem; }
+
+    @media (orientation: landscape) and (max-height: 500px) {
+      .add-box { margin: 0.6rem; padding: 0.8rem; }
+      .status-media img, .status-media video { max-height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="back" onclick="location.href='chats.html'">← Chats</button>
+    <div class="logo">Status</div>
+    <div style="width:60px"></div>
+  </header>
+
+  <div class="add-box">
+    <textarea id="statusText" placeholder="What's happening?"></textarea>
+    <div class="media-row">
+      <label>📷 Photo<input type="file" id="photoInput" accept="image/*" onchange="previewMedia(this, 'image')" /></label>
+      <label>🎬 Video<input type="file" id="videoInput" accept="video/*" onchange="previewMedia(this, 'video')" /></label>
+      <button type="button" onclick="clearMedia()" style="display:none;" id="clearMediaBtn">Remove media</button>
+    </div>
+    <div id="mediaPreview"></div>
+    <button class="post-btn" onclick="postStatus()">Post Status</button>
+  </div>
+
+  <div class="status-list" id="statusList">
+    <div class="empty">Loading statuses...</div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="chats.html" class="nav-item"><span>💬</span>Chats</a>
+    <a href="status.html" class="nav-item active"><span>○</span>Status</a>
+    <a href="settings.html" class="nav-item"><span>⚙️</span>Settings</a>
+  </nav>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+    let me = null;
+    let mediaFile = null;
+    let mediaType = null; // image | video
+
+    auth.onAuthStateChanged(user => {
+      if (!user) return location.href = "index.html";
+      me = user;
+      loadStatuses();
+      db.collection("coretalk_presence").doc(me.uid).set({
+        online: true,
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+        name: me.displayName || "User",
+        photo: me.photoURL || ""
+      }, { merge: true }).catch(() => {});
+    });
+
+    function previewMedia(input, type) {
+      const file = input.files[0];
+      if (!file) return;
+      // limit ~8MB for practicality
+      if (file.size > 8 * 1024 * 1024) {
+        document.getElementById("statusList").insertAdjacentHTML("beforebegin", "");
+        alert("File too large. Keep under 8MB.");
+        input.value = "";
+        return;
+      }
+      mediaFile = file;
+      mediaType = type;
+      const preview = document.getElementById("mediaPreview");
+      const url = URL.createObjectURL(file);
+      if (type === "image") {
+        preview.innerHTML = '<img src="' + url + '" alt="preview">';
+      } else {
+        preview.innerHTML = '<video src="' + url + '" controls></video>';
+      }
+      preview.style.display = "block";
+      document.getElementById("clearMediaBtn").style.display = "inline-block";
+    }
+
+    function clearMedia() {
+      mediaFile = null;
+      mediaType = null;
+      document.getElementById("photoInput").value = "";
+      document.getElementById("videoInput").value = "";
+      document.getElementById("mediaPreview").style.display = "none";
+      document.getElementById("mediaPreview").innerHTML = "";
+      document.getElementById("clearMediaBtn").style.display = "none";
+    }
+
+    function postStatus() {
+      const text = document.getElementById("statusText").value.trim();
+      if (!text && !mediaFile) {
+        showTip("Write something or add a photo/video");
+        return;
+      }
+
+      const expires = new Date();
+      expires.setHours(expires.getHours() + 24);
+
+      const base = {
+        text: text || "",
+        uid: me.uid,
+        name: me.displayName || "User",
+        photo: me.photoURL || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        expiresAt: expires,
+        mediaType: null,
+        mediaUrl: null
+      };
+
+      const finish = (data) => {
+        db.collection("coretalk_status").add(data).then(() => {
+          document.getElementById("statusText").value = "";
+          clearMedia();
+          showTip("Status posted (24h)");
+        }).catch(err => {
+          console.error(err);
+          showTip("Failed to post");
+        });
+      };
+
+      if (!mediaFile) {
+        finish(base);
+        return;
+      }
+
+      const useDataUrl = () => {
+        if (mediaType !== "image") {
+          showTip("Video needs Firebase Storage. Post text or a photo under 600KB.");
+          return;
+        }
+        if (mediaFile.size > 700000) {
+          showTip("Photo too large. Use one under 600KB.");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = e => {
+          base.mediaType = "image";
+          base.mediaUrl = e.target.result;
+          finish(base);
+        };
+        reader.onerror = () => showTip("Could not read photo");
+        reader.readAsDataURL(mediaFile);
+      };
+
+      // Small images: data URL (works without Storage)
+      if (mediaType === "image" && mediaFile.size <= 600000) {
+        useDataUrl();
+        return;
+      }
+
+      // Try Storage
+      try {
+        const spath = "coretalk_status/" + me.uid + "_" + Date.now() + "_" + mediaFile.name;
+        const ref = firebase.storage().ref().child(spath);
+        ref.put(mediaFile).then(snap => snap.ref.getDownloadURL()).then(url => {
+          base.mediaType = mediaType;
+          base.mediaUrl = url;
+          finish(base);
+        }).catch(err => {
+          console.error(err);
+          useDataUrl();
+        });
+      } catch (e) {
+        useDataUrl();
+      }
+    }
+
+    function showTip(msg) {
+      const t = document.createElement("div");
+      t.textContent = msg;
+      t.style.cssText = "position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#00d4ff;color:#000;padding:0.6rem 1.2rem;border-radius:50px;font-weight:600;z-index:50;font-size:0.85rem;";
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    function loadStatuses() {
+      const list = document.getElementById("statusList");
+      db.collection("coretalk_status")
+        .where("expiresAt", ">", new Date())
+        .limit(40)
+        .onSnapshot(snap => {
+          if (snap.empty) {
+            list.innerHTML = '<div class="empty">No active statuses.<br>Be the first to post!</div>';
+            return;
+          }
+          const items = [];
+          snap.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+          items.sort((a, b) => {
+            const ta = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : 0;
+            const tb = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : 0;
+            return tb - ta;
+          });
+          let html = "";
+          items.forEach(d => {
+            const initial = (d.name || "?").charAt(0).toUpperCase();
+            html += '<div class="status-card"><div class="status-header">';
+            html += '<div class="status-avatar">' + (d.photo ? '<img src="' + d.photo + '">' : initial) + '</div>';
+            html += '<div><strong>' + escapeHtml(d.name || "User") + '</strong>';
+            html += '<div class="status-meta">' + timeAgo(d.createdAt) + '</div></div></div>';
+            if (d.text) html += '<div class="status-text">' + escapeHtml(d.text) + '</div>';
+            if (d.mediaUrl) {
+              html += '<div class="status-media">';
+              if (d.mediaType === "video") {
+                html += '<video src="' + d.mediaUrl + '" controls playsinline></video>';
+              } else {
+                html += '<img src="' + d.mediaUrl + '" alt="status">';
+              }
+              html += '</div>';
+            }
+            html += '<div class="status-actions">';
+            html += '<button onclick="shareStatus(\'' + d.id + '\')">Share</button>';
+            if (d.uid === me.uid) {
+              html += '<button class="del" onclick="deleteStatus(\'' + d.id + '\')">Delete</button>';
+            }
+            html += '</div></div>';
+          });
+          list.innerHTML = html;
+        }, err => {
+          console.error(err);
+          list.innerHTML = '<div class="empty">Could not load statuses.</div>';
+        });
+    }
+
+
+    function deleteStatus(id) {
+      if (!id) return;
+      // in-app confirm via simple double-tap style: first click asks
+      const ok = window.__delStatus === id;
+      if (!ok) {
+        window.__delStatus = id;
+        showTip("Tap Delete again to confirm");
+        setTimeout(() => { if (window.__delStatus === id) window.__delStatus = null; }, 3000);
+        return;
+      }
+      window.__delStatus = null;
+      db.collection("coretalk_status").doc(id).delete()
+        .then(() => showTip("Status deleted"))
+        .catch(() => showTip("Could not delete"));
+    }
+
+    function shareStatus(id) {
+      db.collection("coretalk_status").doc(id).get().then(doc => {
+        if (!doc.exists) return;
+        const d = doc.data();
+        const text = (d.name || "Someone") + " on CoreTalk: " + (d.text || "shared a status");
+        const url = location.origin + location.pathname.replace(/status\.html.*/, "") + "status.html";
+        const shareData = { title: "CoreTalk Status", text: text, url: url };
+
+        // Prefer native share (WhatsApp, etc.)
+        if (navigator.share) {
+          navigator.share(shareData).catch(() => copyShare(text, url, d));
+        } else {
+          copyShare(text, url, d);
+        }
+      });
+    }
+
+    function copyShare(text, url, d) {
+      const full = text + "\n" + url;
+      navigator.clipboard.writeText(full).then(() => {
+        showTip("Copied — paste in WhatsApp or any app");
+      }).catch(() => {
+        showTip(text);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+    function timeAgo(ts) {
+      if (!ts) return "";
+      const d = ts.toDate ? ts.toDate() : new Date(ts);
+      const diff = (Date.now() - d.getTime()) / 1000;
+      if (diff < 60) return "Just now";
+      if (diff < 3600) return Math.floor(diff/60) + "m ago";
+      if (diff < 86400) return Math.floor(diff/3600) + "h ago";
+      return d.toLocaleDateString();
+    }
+
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  </script>
+</body>
+</html>
